@@ -1,0 +1,114 @@
+////////////////////
+// List Functions //
+////////////////////
+
+@function car($list) {
+  @return nth($list, 1);
+}
+
+@function cdr($list) {
+  $output: ();
+  $length: length($list);
+
+  @if $length > 1 {
+    @for $index from 2 through $length {
+      $output: append($output, nth($list, $index));
+    }
+  }
+
+  @return $output;
+}
+
+////////////////////
+// Math Functions //
+////////////////////
+
+@function add($result, $operands...) {
+  @each $number in $operands {
+    $result: $result + $number;
+  }
+
+  @return $result;
+}
+
+@function subtract($result, $operands...) {
+  @each $number in $operands {
+    $result: $result - $number;
+  }
+
+  @return $result;
+}
+
+@function multiply($result, $operands...) {
+  @each $number in $operands {
+    $result: $result * $number;
+  }
+
+  @return $result;
+}
+
+@function divide($result, $operands...) {
+  @each $number in $operands {
+    $result: $result / $number;
+  }
+
+  @return $result;
+}
+
+///////////////////////
+// Boolean Functions //
+///////////////////////
+
+@function bool_and($result, $operands...) {
+  @each $number in $operands {
+    $result: $result and $number;
+  }
+
+  @return $result;
+}
+
+@function bool_or($result, $operands...) {
+  @each $number in $operands {
+    $result: $result or $number;
+  }
+
+  @return $result;
+}
+
+@function bool_not($value) {
+  @return not $value;
+}
+
+/////////////////
+// Evalualtion //
+/////////////////
+
+@function list_eval($list) {
+  $output: ();
+
+  @each $item in $list {
+    $output: append($output, if((type_of($item) == list), eval($item), $item));
+  }
+
+  @return $output;
+}
+
+@function eval($list) {
+  @if $list == () {
+    @return ();
+  } @else {
+    $car: car($list);
+    $cdr: cdr($list);
+
+    // Evaluate each item in the list
+    @if type_of($car) == list {
+      @return list_eval($list);
+    // Evaluate qwote built-in
+    } @else if $car == qwote {
+      @return $cdr;
+    // Evaluate as a SASS function
+    } @else {
+      @return call($car, list_eval($cdr)...);
+    }
+  }
+}
