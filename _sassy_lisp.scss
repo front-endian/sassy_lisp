@@ -122,7 +122,26 @@
       $globals: map_merge($globals, map_get($sub_result, globals));
       $locals:  map_merge($locals,  map_get($sub_result, locals));
 
-      $result: call($car, map_get($sub_result, result)...);
+      // Call lambda defined globally or locally
+      @if map_has_key($globals, $car) or map_has_key($locals, $car) {
+        $definition: map_get(
+                       if(map_has_key($globals, $car), $globals, $locals),
+                       $car
+                     );
+
+        $lambda_result: lambda_eval(
+                          $definition,
+                          $globals,
+                          map_get($sub_result, result)...
+                        );
+
+        $globals: map_merge($globals, map_get($lambda_result, globals));
+        $result:  map_get($lambda_result, result);
+
+      // Call a native SASS function
+      } @else {
+        $result: call($car, map_get($sub_result, result)...);
+      }
     }
   }
 
@@ -152,4 +171,19 @@
   }
 
   @return ( result: $result, globals: $globals, locals: $locals );
+}
+
+@function lambda_eval($definition, $globals, $arguments...) {
+  $parameters: nth($definition, 1);
+  $body:       nth($definition, 2);
+  $locals:     ();
+
+  @for $index from 1 through length($parameters) {
+    $locals: map_merge(
+               $locals,
+               ( nth($parameters, $index): nth($arguments, $index) )
+             );
+  }
+
+  @return eval($body, $globals, $locals);
 }

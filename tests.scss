@@ -29,3 +29,12 @@ Globals {
   Assert: function_eval((global two 2) (add (add two 1) 1));
   Expect: 4;
 }
+
+Lambdas As Named Functions {
+  Assert: function_eval(
+            (global add_one ((value) (add value 1)))
+            (global add_two ((value) (add_one (add_one value))))
+            (add_two 1)
+          );
+  Expect: 3;
+}
