@@ -65,3 +65,25 @@ Parameters Take Precedence Over Globals  {
           );
   Expect: 2;
 }
+
+Locals Do Not Leak Out {
+  Assert: function_eval(
+            (global add_one ((value) (
+              (local one 1)
+              (add value one)
+            )))
+            (add_one one)
+          );
+  Expect: one1;
+}
+
+Locals Do Not Leak In {
+  Assert: function_eval(
+            (local one 1)
+            (global add_one ((value) (
+              (add value one)
+            )))
+            (add_one one)
+          );
+  Expect: 1one;
+}
