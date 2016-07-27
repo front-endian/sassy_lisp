@@ -125,7 +125,7 @@
       // Call lambda defined globally or locally
       @if map_has_key($globals, $car) or map_has_key($locals, $car) {
         $definition: map_get(
-                       if(map_has_key($globals, $car), $globals, $locals),
+                       if(map_has_key($locals, $car), $locals, $globals),
                        $car
                      );
 
@@ -160,11 +160,11 @@
 
       $item: map_get($sub_result, result);
 
-    } @else if map_has_key($globals, $item) {
-      $item: map_get($globals, $item);
-
     } @else if map_has_key($locals, $item) {
       $item: map_get($locals, $item);
+
+    } @else if map_has_key($globals, $item) {
+      $item: map_get($globals, $item);
     }
 
     $result: append($result, $item);
