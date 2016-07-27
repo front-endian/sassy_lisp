@@ -38,3 +38,12 @@ Lambdas As Named Functions {
           );
   Expect: 3;
 }
+
+Lambdas As Arguments {
+  Assert: function_eval(
+            (global call_with_4 ((func) (func 4)))
+            (global add_one ((value) (add value 1)))
+            (call_with_4 add_one)
+          );
+  Expect: 5;
+}
