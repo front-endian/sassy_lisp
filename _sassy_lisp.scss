@@ -121,14 +121,6 @@
 
       $result: $name;
 
-    // Define a local
-    } @else if $car == local {
-      $name:  nth($cdr, 1);
-      $value: nth($cdr, 2);
-
-      $locals: map_merge($locals, ( $name: $value ));
-      $result: $name;
-
     // Evaluate as a function
     } @else {
       $sub_result: list_eval($cdr, $globals, $locals);
