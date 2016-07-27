@@ -83,32 +83,73 @@
 // Evalualtion //
 /////////////////
 
-@function list_eval($list) {
-  $output: ();
-
-  @each $item in $list {
-    $output: append($output, if((type_of($item) == list), eval($item), $item));
-  }
-
-  @return $output;
+@function function_eval($list...) {
+  @return map_get(eval($list, (), ()), result);
 }
 
-@function eval($list) {
-  @if $list == () {
-    @return ();
-  } @else {
+@function eval($list, $globals, $locals) {
+  $result: ();
+
+  @if $list != () {
     $car: car($list);
     $cdr: cdr($list);
 
     // Evaluate each item in the list
     @if type_of($car) == list {
-      @return list_eval($list);
-    // Evaluate qwote built-in
-    } @else if $car == qwote {
-      @return $cdr;
-    // Evaluate as a SASS function
+      $sub_result: list_eval($list, $globals, $locals);
+
+      $globals: map_merge($globals, map_get($sub_result, globals));
+      $locals:  map_merge($locals,  map_get($sub_result, locals));
+
+      $result: nth(map_get($sub_result, result), -1);
+
+    // Evaluate q built-in
+    } @else if $car == q {
+      $result: $cdr;
+
+    // Define a global
+    } @else if $car == global {
+      $name:  nth($cdr, 1);
+      $value: nth($cdr, 2);
+
+      $globals: map_merge($globals, ( $name: $value ));
+      $result: $name;
+
+    // Evaluate as a function
     } @else {
-      @return call($car, list_eval($cdr)...);
+      $sub_result: list_eval($cdr, $globals, $locals);
+
+      $globals: map_merge($globals, map_get($sub_result, globals));
+      $locals:  map_merge($locals,  map_get($sub_result, locals));
+
+      $result: call($car, map_get($sub_result, result)...);
     }
   }
+
+  @return ( result: $result, globals: $globals, locals: $locals );
+}
+
+@function list_eval($list, $globals, $locals) {
+  $result: ();
+
+  @each $item in $list {
+    @if type_of($item) == list {
+      $sub_result: eval($item, $globals, $locals);
+
+      $globals: map_merge($globals, map_get($sub_result, globals));
+      $locals:  map_merge($locals,  map_get($sub_result, locals));
+
+      $item: map_get($sub_result, result);
+
+    } @else if map_has_key($globals, $item) {
+      $item: map_get($globals, $item);
+
+    } @else if map_has_key($locals, $item) {
+      $item: map_get($locals, $item);
+    }
+
+    $result: append($result, $item);
+  }
+
+  @return ( result: $result, globals: $globals, locals: $locals );
 }
