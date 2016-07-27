@@ -23,56 +23,56 @@
 // Math Functions //
 ////////////////////
 
-@function add($result, $operands...) {
-  @each $number in $operands {
-    $result: $result + $number;
+@function add($value, $rest...) {
+  @each $number in $rest {
+    $value: $value + $number;
   }
 
-  @return $result;
+  @return $value;
 }
 
-@function subtract($result, $operands...) {
-  @each $number in $operands {
-    $result: $result - $number;
+@function subtract($value, $rest...) {
+  @each $number in $rest {
+    $value: $value - $number;
   }
 
-  @return $result;
+  @return $value;
 }
 
-@function multiply($result, $operands...) {
-  @each $number in $operands {
-    $result: $result * $number;
+@function multiply($value, $rest...) {
+  @each $number in $rest {
+    $value: $value * $number;
   }
 
-  @return $result;
+  @return $value;
 }
 
-@function divide($result, $operands...) {
-  @each $number in $operands {
-    $result: $result / $number;
+@function divide($value, $rest...) {
+  @each $number in $rest {
+    $value: $value / $number;
   }
 
-  @return $result;
+  @return $value;
 }
 
 ///////////////////////
 // Boolean Functions //
 ///////////////////////
 
-@function bool_and($result, $operands...) {
-  @each $number in $operands {
-    $result: $result and $number;
+@function bool_and($value, $rest...) {
+  @each $item in $rest {
+    $value: $value and $item;
   }
 
-  @return $result;
+  @return $value;
 }
 
-@function bool_or($result, $operands...) {
-  @each $number in $operands {
-    $result: $result or $number;
+@function bool_or($value, $rest...) {
+  @each $item in $rest {
+    $value: $value or $item;
   }
 
-  @return $result;
+  @return $value;
 }
 
 @function bool_not($value) {
