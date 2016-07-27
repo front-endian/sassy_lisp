@@ -47,3 +47,21 @@ Lambdas As Arguments {
           );
   Expect: 5;
 }
+
+Parameters Take Precedence Over Globals  {
+  Assert: function_eval(
+            (global value 999)
+            (global add_one ((value) (add value 1)))
+            (add_one 1)
+          );
+  Expect: 2;
+}
+
+Parameters Take Precedence Over Globals  {
+  Assert: function_eval(
+            (global value 999)
+            (global add_one ((value) (add value 1)))
+            (add_one 1)
+          );
+  Expect: 2;
+}
