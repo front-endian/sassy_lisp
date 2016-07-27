@@ -1,0 +1,31 @@
+@import 'sassy_lisp';
+
+Quote {
+  Assert: function_eval((q 1 2 3));
+  Expect: 1 2 3;
+}
+
+Singleline {
+  Assert: function_eval(q 1 2 3);
+  Expect: 1 2 3;
+}
+
+Multiline {
+  Assert: function_eval((q 1) (q 2));
+  Expect: 2;
+}
+
+Math {
+  Assert: function_eval((add 0.25 (multiply 4 (multiply 5 2)) 1.75));
+  Expect: 42;
+}
+
+Booleans {
+  Assert: function_eval((bool_and 7 (bool_or (bool_and 9 (bool_not true)) 12)));
+  Expect: 12;
+}
+
+Globals {
+  Assert: function_eval((global two 2) (add (add two 1) 1));
+  Expect: 4;
+}
