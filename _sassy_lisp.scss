@@ -96,22 +96,37 @@
 
     // Evaluate each item in the list
     @if type_of($car) == list {
-      $sub_result: list_eval($list, $globals, $locals);
+      $sub_state: list_eval($list, $globals, $locals);
 
-      $globals: set_globals($globals, $sub_result);
-      $locals:  set_locals($locals,   $sub_result);
+      $globals: set_globals($globals, $sub_state);
+      $locals:  set_locals($locals,   $sub_state);
 
-      $result: nth(map_get($sub_result, result), -1);
+      $result: nth(get_result($sub_state), -1);
 
     // Evaluate q built-in
     } @else if $car == q {
-      $result: $cdr;
+      $sub_state: list_eval($cdr, $globals, $locals);
+
+      $globals: set_globals($globals, $sub_state);
+      $locals:  set_locals($locals, $sub_state);
+
+      $result: get_result($sub_state);
 
     // Define a global or a local
     } @else if $car == global or $car == local {
       $name:  nth($cdr, 1);
       $value: nth($cdr, 2);
-      $map:   ( $name: $value );
+
+      @if type_of($value) == list {
+        $sub_state: eval($value, $globals, $locals);
+
+        $globals: set_globals($globals, $sub_state);
+        $locals:  set_locals($locals, $sub_state);
+
+        $value: get_result($sub_state);
+      }
+
+      $map: ( $name: $value );
 
       @if $car == global {
         $globals: map_merge($globals, $map);
@@ -121,37 +136,37 @@
 
       $result: $name;
 
+    // Create a lambda
+    } @else if $car == lambda {
+      $result: make_lambda(nth($cdr, 1), nth($cdr, 2), $locals);
+
     // Evaluate as a function
     } @else {
-      $sub_result: list_eval($cdr, $globals, $locals);
+      $sub_state: list_eval($cdr, $globals, $locals);
 
-      $globals: set_globals($globals, $sub_result);
-      $locals:  set_locals($locals,   $sub_result);
+      $globals: set_globals($globals, $sub_state);
+      $locals:  set_locals($locals,   $sub_state);
 
       // Call lambda defined globally or locally
       @if map_has_key($globals, $car) or map_has_key($locals, $car) {
-        $definition: map_get(
-                       if(map_has_key($locals, $car), $locals, $globals),
-                       $car
-                     );
+        $lambda: map_get(
+                   if(map_has_key($locals, $car), $locals, $globals),
+                   $car
+                 );
 
-        $lambda_result: lambda_eval(
-                          $definition,
-                          $globals,
-                          map_get($sub_result, result)...
-                        );
+        $lambda_result: lambda_eval($lambda, $globals, get_result($sub_state)...);
 
         $globals: set_globals($globals, $lambda_result);
-        $result:  map_get($lambda_result, result);
+        $result:  get_result($lambda_result);
 
       // Call a native SASS function
       } @else {
-        $result: call($car, map_get($sub_result, result)...);
+        $result: call($car, get_result($sub_state)...);
       }
     }
   }
 
-  @return ( result: $result, globals: $globals, locals: $locals );
+  @return make_state($result, $globals, $locals);
 }
 
 @function list_eval($list, $globals, $locals) {
@@ -159,12 +174,12 @@
 
   @each $item in $list {
     @if type_of($item) == list {
-      $sub_result: eval($item, $globals, $locals);
+      $sub_state: eval($item, $globals, $locals);
 
-      $globals: set_globals($globals, $sub_result);
-      $locals:  set_locals($locals,   $sub_result);
+      $globals: set_globals($globals, $sub_state);
+      $locals:  set_locals($locals,   $sub_state);
 
-      $item: map_get($sub_result, result);
+      $item: get_result($sub_state);
 
     } @else if map_has_key($locals, $item) {
       $item: map_get($locals, $item);
@@ -176,28 +191,62 @@
     $result: append($result, $item);
   }
 
-  @return ( result: $result, globals: $globals, locals: $locals );
+  @return make_state($result, $globals, $locals);
 }
 
-@function lambda_eval($definition, $globals, $arguments...) {
-  $parameters: nth($definition, 1);
-  $body:       nth($definition, 2);
-  $locals:     ();
+@function lambda_eval($lambda, $globals, $arguments...) {
+  $parameters: get_lambda_parameters($lambda);
+  $body:       get_lambda_body($lambda);
+  $locals:     get_lambda_locals($lambda);
 
-  @for $index from 1 through length($parameters) {
-    $locals: map_merge(
-               $locals,
-               ( nth($parameters, $index): nth($arguments, $index) )
-             );
+  @if length($parameters) != 0 {
+    @for $index from 1 through length($parameters) {
+      $locals: map_merge(
+                 $locals,
+                 ( nth($parameters, $index): nth($arguments, $index) )
+               );
+    }
   }
 
   @return eval($body, $globals, $locals);
 }
 
 @function set_globals($to, $from) {
-  @return map_merge($to, map_get($from, globals));
+  @return map_merge($to, get_globals($from));
 }
 
 @function set_locals($to, $from) {
-  @return map_merge($to, map_get($from, locals));
+  @return map_merge($to, get_locals($from));
+}
+
+@function get_result($data) {
+  @return map_get($data, result);
+}
+
+@function get_globals($data) {
+  @return map_get($data, globals);
+}
+
+@function get_locals($data) {
+  @return map_get($data, locals);
+}
+
+@function get_lambda_parameters($data) {
+  @return nth($data, 1);
+}
+
+@function get_lambda_body($data) {
+  @return nth($data, 2);
+}
+
+@function get_lambda_locals($data) {
+  @return nth($data, 3);
+}
+
+@function make_state($result, $globals, $locals) {
+  @return ( result: $result, globals: $globals, locals: $locals )
+}
+
+@function make_lambda($parameters, $body, $locals) {
+  @return ($parameters, $body, $locals)
 }

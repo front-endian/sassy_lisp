@@ -11,7 +11,10 @@ Single Line {
 }
 
 Multi Line {
-  Assert: function_eval((q 1) (q 2));
+  Assert: function_eval(
+            (q 1)
+            (q 2)
+          );
   Expect: 2;
 }
 
@@ -26,14 +29,31 @@ Booleans {
 }
 
 Globals {
-  Assert: function_eval((global two 2) (add (add two 1) 1));
+  Assert: function_eval(
+            (global two 2)
+            (add (add two 1) 1)
+          );
   Expect: 4;
 }
 
 Lambdas As Named Functions {
   Assert: function_eval(
-            (global add_one ((value) (add value 1)))
-            (global add_two ((value) (add_one (add_one value))))
+            (global add_two (lambda (value) (
+              (add 2 value)
+            )))
+            (add_two 3)
+          );
+  Expect: 5;
+}
+
+Calling Named Functions From Named Functions {
+  Assert: function_eval(
+            (global add_one (lambda (value) (
+              (add value 1)
+            )))
+            (global add_two (lambda (value) (
+              (add_one (add_one value)
+            ))))
             (add_two 1)
           );
   Expect: 3;
@@ -41,9 +61,12 @@ Lambdas As Named Functions {
 
 Lambdas As Arguments {
   Assert: function_eval(
-            (global call_with_4 ((func) (func 4)))
-            (global add_one ((value) (add value 1)))
-            (call_with_4 add_one)
+            (global call_with_4 (lambda (func) (
+              (func 4)
+            )))
+            (call_with_4 (lambda (value) (
+              (add value 1)
+            )))
           );
   Expect: 5;
 }
@@ -51,7 +74,9 @@ Lambdas As Arguments {
 Parameters Take Precedence Over Globals  {
   Assert: function_eval(
             (global value 999)
-            (global add_one ((value) (add value 1)))
+            (global add_one (lambda (value) (
+              (add value 1)
+            )))
             (add_one 1)
           );
   Expect: 2;
@@ -60,7 +85,9 @@ Parameters Take Precedence Over Globals  {
 Parameters Take Precedence Over Globals  {
   Assert: function_eval(
             (global value 999)
-            (global add_one ((value) (add value 1)))
+            (global add_one (lambda (value) (
+              (add value 1)
+            )))
             (add_one 1)
           );
   Expect: 2;
@@ -68,7 +95,7 @@ Parameters Take Precedence Over Globals  {
 
 Locals Do Not Leak Out {
   Assert: function_eval(
-            (global add_one ((value) (
+            (global add_one (lambda (value) (
               (local one 1)
               (add value one)
             )))
@@ -77,13 +104,19 @@ Locals Do Not Leak Out {
   Expect: one1;
 }
 
-Locals Do Not Leak In {
+Locals Are Captured When Lambda Is Created {
   Assert: function_eval(
-            (local one 1)
-            (global add_one ((value) (
-              (add value one)
+            (local thing 1)
+            (global add_thing (lambda (value) (
+              (add value thing)
             )))
-            (add_one one)
+
+            (local thing 2)
+            (global add_another_thing (lambda (value) (
+              (add value thing)
+            )))
+
+            (add_thing (add_another_thing 3))
           );
-  Expect: 1one;
+  Expect: 6;
 }
