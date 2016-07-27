@@ -98,8 +98,8 @@
     @if type_of($car) == list {
       $sub_result: list_eval($list, $globals, $locals);
 
-      $globals: map_merge($globals, map_get($sub_result, globals));
-      $locals:  map_merge($locals,  map_get($sub_result, locals));
+      $globals: set_globals($globals, $sub_result);
+      $locals:  set_locals($locals,   $sub_result);
 
       $result: nth(map_get($sub_result, result), -1);
 
@@ -107,12 +107,18 @@
     } @else if $car == q {
       $result: $cdr;
 
-    // Define a global
-    } @else if $car == global {
+    // Define a global or a local
+    } @else if $car == global or $car == local {
       $name:  nth($cdr, 1);
       $value: nth($cdr, 2);
+      $map:   ( $name: $value );
 
-      $globals: map_merge($globals, ( $name: $value ));
+      @if $car == global {
+        $globals: map_merge($globals, $map);
+      } @else {
+        $locals: map_merge($locals, $map);
+      }
+
       $result: $name;
 
     // Define a local
@@ -127,8 +133,8 @@
     } @else {
       $sub_result: list_eval($cdr, $globals, $locals);
 
-      $globals: map_merge($globals, map_get($sub_result, globals));
-      $locals:  map_merge($locals,  map_get($sub_result, locals));
+      $globals: set_globals($globals, $sub_result);
+      $locals:  set_locals($locals,   $sub_result);
 
       // Call lambda defined globally or locally
       @if map_has_key($globals, $car) or map_has_key($locals, $car) {
@@ -143,7 +149,7 @@
                           map_get($sub_result, result)...
                         );
 
-        $globals: map_merge($globals, map_get($lambda_result, globals));
+        $globals: set_globals($globals, $lambda_result);
         $result:  map_get($lambda_result, result);
 
       // Call a native SASS function
@@ -163,8 +169,8 @@
     @if type_of($item) == list {
       $sub_result: eval($item, $globals, $locals);
 
-      $globals: map_merge($globals, map_get($sub_result, globals));
-      $locals:  map_merge($locals,  map_get($sub_result, locals));
+      $globals: set_globals($globals, $sub_result);
+      $locals:  set_locals($locals,   $sub_result);
 
       $item: map_get($sub_result, result);
 
@@ -194,4 +200,12 @@
   }
 
   @return eval($body, $globals, $locals);
+}
+
+@function set_globals($to, $from) {
+  @return map_merge($to, map_get($from, globals));
+}
+
+@function set_locals($to, $from) {
+  @return map_merge($to, map_get($from, locals));
 }
