@@ -109,3 +109,23 @@ Locals Are Captured When Lambda Is Created {
           );
   Expect: 6;
 }
+
+Conditionals {
+  Assert: function_eval(
+            (q
+              (cond
+                ((equal 7 7) (q yup))
+                ((equal 1 2) (q nope))
+              )
+              (cond
+                ((greater_than 1 2) (q nope))
+                ((less_than 1 2) (q yup))
+              )
+              (cond
+                ((equal two 2) (q nope))
+                (else q yup)
+              )
+            )
+          );
+  Expect: yup yup yup;
+}

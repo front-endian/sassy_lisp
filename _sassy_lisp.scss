@@ -79,6 +79,26 @@
   @return not $value;
 }
 
+@function equal($value, $other) {
+  @return $value == $other;
+}
+
+@function greater_than($value, $other) {
+  @return $value > $other;
+}
+
+@function less_than($value, $other) {
+  @return $value < $other;
+}
+
+@function less_than_or_equal($value, $other) {
+  @return $value <= $other;
+}
+
+@function greater_than_or_equal($value, $other) {
+  @return $value >= $other;
+}
+
 /////////////////
 // Evalualtion //
 /////////////////
@@ -106,6 +126,15 @@
     // Evaluate q built-in
     } @else if $car == q {
       $sub_state: list_eval($cdr, $globals, $locals);
+
+      $globals: set_globals($globals, $sub_state);
+      $locals:  set_locals($locals, $sub_state);
+
+      $result: get_result($sub_state);
+
+    // Evaluate cond built-in
+    } @else if $car == cond {
+      $sub_state: cond_eval($cdr, $globals, $locals);
 
       $globals: set_globals($globals, $sub_state);
       $locals:  set_locals($locals, $sub_state);
@@ -209,6 +238,38 @@
   }
 
   @return eval($body, $globals, $locals);
+}
+
+@function cond_eval($blocks, $globals, $locals) {
+  $result: null;
+
+  @each $block in $blocks {
+    $car: car($block);
+    $cdr: cdr($block);
+
+    // If this is an else block, eval the cdr and return the result
+    @if $car == else {
+      @return eval($cdr, $globals, $locals);
+
+    // This is a conditional block, so eval the car
+    } @else {
+      $sub_state: eval($car, $globals, $locals);
+
+      $globals: set_globals($globals, $sub_state);
+      $locals:  set_locals($locals,   $sub_state);
+      $result:  get_result($sub_state);
+
+      // If the car returned true, eval the cdr and return the result
+      @if $result {
+        $sub_state: eval($cdr, $globals, $locals);
+
+        $globals: set_globals($globals, $sub_state);
+        $locals:  set_locals($locals,   $sub_state);
+
+        @return make_state(get_result($sub_state), $globals, $locals);
+      }
+    }
+  }
 }
 
 @function set_globals($to, $from) {
