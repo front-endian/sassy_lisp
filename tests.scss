@@ -82,17 +82,6 @@ Parameters Take Precedence Over Globals  {
   Expect: 2;
 }
 
-Parameters Take Precedence Over Globals  {
-  Assert: function_eval(
-            (global value 999)
-            (global add_one (lambda (value) (
-              (add value 1)
-            )))
-            (add_one 1)
-          );
-  Expect: 2;
-}
-
 Locals Do Not Leak Out {
   Assert: function_eval(
             (global add_one (lambda (value) (
