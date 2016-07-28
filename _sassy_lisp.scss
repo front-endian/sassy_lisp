@@ -108,7 +108,7 @@
 }
 
 @function eval($list, $globals, $locals) {
-  $result: ();
+  $result: null;
 
   @if $list != () {
     $car: car($list);
@@ -167,7 +167,7 @@
 
     // Create a lambda
     } @else if $car == lambda {
-      $result: make_lambda(nth($cdr, 1), nth($cdr, 2), $locals);
+      $result: make_lambda(car($cdr), cdr($cdr), $locals);
 
     // Evaluate as a function
     } @else {
