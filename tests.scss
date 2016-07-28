@@ -1,21 +1,21 @@
 @import 'sassy_lisp';
 
 Quote {
-  Assert: function_eval((q 1 2 3));
-  Expect: 1 2 3;
+  Assert: function_eval((q one two three));
+  Expect: one two three;
 }
 
 Single Line {
-  Assert: function_eval(q 1 2 3);
-  Expect: 1 2 3;
+  Assert: function_eval(q one two three);
+  Expect: one two three;
 }
 
 Multi Line {
   Assert: function_eval(
-            (q 1)
-            (q 2)
+            (q one)
+            (q two)
           );
-  Expect: 2;
+  Expect: two;
 }
 
 Math {
