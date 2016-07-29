@@ -1,0 +1,41 @@
+///////////////
+// Pure SASS //
+///////////////
+
+@function sass_fib($value) {
+  @if $value == 0 or $value == 1 {
+    @return $value;
+  } @else {
+    @return sass_fib($value - 1) + sass_fib($value - 2)
+  }
+}
+
+Pure SASS {
+  Assert: sass_fib(14);
+  Expect: 377;
+}
+
+////////////////
+// Sassy Lisp //
+////////////////
+
+@import 'sassy_lisp';
+
+Sassy Lisp {
+  Assert: function_eval(
+            (global lisp_fib (lambda (value) (
+              (cond
+                ((less_than value 2) (identity value))
+                (else
+                  (add
+                    (lisp_fib (subtract value 1))
+                    (lisp_fib (subtract value 2))
+                  )
+                )
+              )
+            )))
+
+            (lisp_fib 14)
+          );
+  Expect: 377;
+}
