@@ -110,22 +110,50 @@ Locals Are Captured When Lambda Is Created {
   Expect: 6;
 }
 
+Lambdas Can Be Recursive {
+  Assert: function_eval(
+            (global fib (lambda (value) (
+              (cond
+                ((less_than value 2) (identity value))
+                (else
+                  (add
+                    (fib (subtract value 1))
+                    (fib (subtract value 2))
+                  )
+                )
+              )
+            )))
+
+            (fib 6)
+          );
+  Expect: 8;
+}
+
 Conditionals {
   Assert: function_eval(
             (q
               (cond
-                ((equal 7 7) (q yup))
-                ((equal 1 2) (q nope))
+                ((equal 7 7) (identity yup))
+                ((equal 1 2) (identity nope))
               )
               (cond
-                ((greater_than 1 2) (q nope))
-                ((less_than 1 2) (q yup))
+                ((greater_than 1 2) (identity nope))
+                ((less_than 1 2) (identity yup))
               )
               (cond
-                ((equal two 2) (q nope))
-                (else q yup)
+                ((equal two 2) (identity nope))
+                (else (identity yup))
               )
             )
           );
   Expect: yup yup yup;
+}
+
+Conditionals Return null If Nothing Evaluates {
+  Assert: function_eval(
+            (inspect
+              (cond ((equal 1 2) (q nope)))
+            )
+          );
+  Expect: null;
 }
