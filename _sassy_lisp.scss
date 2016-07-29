@@ -104,42 +104,31 @@
 /////////////////
 
 @function function_eval($list...) {
-  @return map_get(eval($list, (), ()), result);
+  @return get_result(eval($list, make_state(null, (), ())));
 }
 
-@function eval($list, $globals, $locals) {
-  $result: null;
-
+@function eval($list, $state) {
   @if $list != () {
     $car: car($list);
     $cdr: cdr($list);
 
     // Evaluate each item in the list
     @if type_of($car) == list {
-      $sub_state: list_eval($list, $globals, $locals);
-
-      $globals: set_globals($globals, $sub_state);
-      $locals:  set_locals($locals,   $sub_state);
-
-      $result: nth(get_result($sub_state), -1);
+      $sub_state: list_eval($list, $state);
+      $state:     merge_environments($state, $sub_state);
+      $state:     set_result($state, nth(get_result($sub_state), -1));
 
     // Evaluate q built-in
     } @else if $car == q {
-      $sub_state: list_eval($cdr, $globals, $locals);
-
-      $globals: set_globals($globals, $sub_state);
-      $locals:  set_locals($locals, $sub_state);
-
-      $result: get_result($sub_state);
+      $sub_state: list_eval($cdr, $state);
+      $state:     merge_environments($state, $sub_state);
+      $state:     set_result($state, get_result($sub_state));
 
     // Evaluate cond built-in
     } @else if $car == cond {
-      $sub_state: cond_eval($cdr, $globals, $locals);
-
-      $globals: set_globals($globals, $sub_state);
-      $locals:  set_locals($locals, $sub_state);
-
-      $result: get_result($sub_state);
+      $sub_state: cond_eval($cdr, $state);
+      $state:     merge_environments($state, $sub_state);
+      $state:     set_result($state, get_result($sub_state));
 
     // Define a global or a local
     } @else if $car == global or $car == local {
@@ -147,68 +136,63 @@
       $value: nth($cdr, 2);
 
       @if type_of($value) == list {
-        $sub_state: eval($value, $globals, $locals);
-
-        $globals: set_globals($globals, $sub_state);
-        $locals:  set_locals($locals, $sub_state);
-
-        $value: get_result($sub_state);
+        $sub_state: eval($value, $state);
+        $state:     merge_environments($state, $sub_state);
+        $value:     get_result($sub_state);
       }
 
       $map: ( $name: $value );
 
       @if $car == global {
-        $globals: map_merge($globals, $map);
+        $state: merge_globals($state, $map);
       } @else {
-        $locals: map_merge($locals, $map);
+        $state: merge_locals($state, $map);
       }
 
-      $result: $name;
+      $state: set_result($state, $name);
 
     // Create a lambda
     } @else if $car == lambda {
-      $result: make_lambda(car($cdr), cdr($cdr), $locals);
+      $state: set_result($state, make_lambda(car($cdr), cdr($cdr), get_locals($state)));
 
     // Evaluate as a function
     } @else {
-      $sub_state: list_eval($cdr, $globals, $locals);
-
-      $globals: set_globals($globals, $sub_state);
-      $locals:  set_locals($locals,   $sub_state);
+      $sub_state: list_eval($cdr, $state);
+      $state:     merge_environments($state, $sub_state);
+      $globals:   get_globals($state);
+      $locals:    get_locals($state);
 
       // Call lambda defined globally or locally
       @if map_has_key($globals, $car) or map_has_key($locals, $car) {
-        $lambda: map_get(
-                   if(map_has_key($locals, $car), $locals, $globals),
-                   $car
-                 );
-
-        $lambda_result: lambda_eval($lambda, $globals, get_result($sub_state)...);
-
-        $globals: set_globals($globals, $lambda_result);
-        $result:  get_result($lambda_result);
+        $lambda:        map_get(
+                          if(map_has_key($locals, $car), $locals, $globals),
+                          $car
+                        );
+        $lambda_result: lambda_eval($lambda, get_globals($state), get_result($sub_state)...);
+        $state:         merge_globals($state, get_globals($lambda_result));
+        $state:         set_result($state, get_result($lambda_result));
 
       // Call a native SASS function
       } @else {
-        $result: call($car, get_result($sub_state)...);
+        $state: set_result($state, call($car, get_result($sub_state)...));
       }
     }
   }
 
-  @return make_state($result, $globals, $locals);
+  @return $state;
 }
 
-@function list_eval($list, $globals, $locals) {
-  $result: ();
+@function list_eval($list, $state) {
+  $state: set_result($state, ());
 
   @each $item in $list {
+    $globals: get_globals($state);
+    $locals:  get_locals($state);
+
     @if type_of($item) == list {
-      $sub_state: eval($item, $globals, $locals);
-
-      $globals: set_globals($globals, $sub_state);
-      $locals:  set_locals($locals,   $sub_state);
-
-      $item: get_result($sub_state);
+      $sub_state: eval($item, $state);
+      $state:     merge_environments($state, $sub_state);
+      $item:      get_result($sub_state);
 
     } @else if map_has_key($locals, $item) {
       $item: map_get($locals, $item);
@@ -217,11 +201,39 @@
       $item: map_get($globals, $item);
     }
 
-    $result: append($result, $item);
+    $state: set_result($state, append(get_result($state), $item));
   }
 
-  @return make_state($result, $globals, $locals);
+  @return $state;
 }
+
+@function cond_eval($blocks, $state) {
+  $state: set_result($state, null);
+
+  @each $block in $blocks {
+    $car: car($block);
+    $cdr: cdr($block);
+
+    // If this is an else block, eval the cdr and return the result
+    @if $car == else {
+      @return eval($cdr, $state);
+
+    // This is a conditional block, so eval the car
+    } @else {
+      $sub_state: eval($car, $state);
+      $state:     merge_environments($sub_state, $state);
+
+      // If the car returned true, eval the cdr and return the result
+      @if get_result($sub_state) {
+        @return eval($cdr, $state);
+      }
+    }
+  }
+}
+
+/////////////
+// Lambdas //
+/////////////
 
 @function lambda_eval($lambda, $globals, $arguments...) {
   $parameters: get_lambda_parameters($lambda);
@@ -237,77 +249,56 @@
     }
   }
 
-  @return eval($body, $globals, $locals);
-}
-
-@function cond_eval($blocks, $globals, $locals) {
-  $result: null;
-
-  @each $block in $blocks {
-    $car: car($block);
-    $cdr: cdr($block);
-
-    // If this is an else block, eval the cdr and return the result
-    @if $car == else {
-      @return eval($cdr, $globals, $locals);
-
-    // This is a conditional block, so eval the car
-    } @else {
-      $sub_state: eval($car, $globals, $locals);
-
-      $globals: set_globals($globals, $sub_state);
-      $locals:  set_locals($locals,   $sub_state);
-      $result:  get_result($sub_state);
-
-      // If the car returned true, eval the cdr and return the result
-      @if $result {
-        $sub_state: eval($cdr, $globals, $locals);
-
-        $globals: set_globals($globals, $sub_state);
-        $locals:  set_locals($locals,   $sub_state);
-
-        @return make_state(get_result($sub_state), $globals, $locals);
-      }
-    }
-  }
-}
-
-@function set_globals($to, $from) {
-  @return map_merge($to, get_globals($from));
-}
-
-@function set_locals($to, $from) {
-  @return map_merge($to, get_locals($from));
-}
-
-@function get_result($data) {
-  @return map_get($data, result);
-}
-
-@function get_globals($data) {
-  @return map_get($data, globals);
-}
-
-@function get_locals($data) {
-  @return map_get($data, locals);
-}
-
-@function get_lambda_parameters($data) {
-  @return nth($data, 1);
-}
-
-@function get_lambda_body($data) {
-  @return nth($data, 2);
-}
-
-@function get_lambda_locals($data) {
-  @return nth($data, 3);
-}
-
-@function make_state($result, $globals, $locals) {
-  @return ( result: $result, globals: $globals, locals: $locals )
+  @return eval($body, make_state(null, $globals, $locals));
 }
 
 @function make_lambda($parameters, $body, $locals) {
   @return ($parameters, $body, $locals)
+}
+
+@function get_lambda_parameters($lambda) { @return nth($lambda, 1); }
+@function get_lambda_body($lambda)       { @return nth($lambda, 2); }
+@function get_lambda_locals($lambda)     { @return nth($lambda, 3); }
+
+//////////////////////
+// Evaluation State //
+//////////////////////
+
+@function make_state($result, $globals, $locals) {
+  @return ($result, $globals, $locals);
+}
+
+// State Getters
+
+@function get_result($state)  { @return nth($state, 1); }
+@function get_globals($state) { @return nth($state, 2); }
+@function get_locals($state)  { @return nth($state, 3); }
+
+// State Setters
+
+@function set_result($state, $result) {
+  @return make_state($result, get_globals($state), get_locals($state));
+}
+
+@function merge_environments($to, $from) {
+  @return merge_locals(
+            merge_globals($to, get_globals($from)),
+            get_locals($from)
+          );
+}
+
+@function merge_globals($to, $globals) {
+  @return make_state(
+            get_result($to),
+            map_merge(get_globals($to), $globals),
+            get_locals($to)
+          );
+}
+
+@function merge_locals($to, $locals) {
+  @return make_state(
+            get_result($to),
+            get_globals($to),
+            map_merge(get_locals($to), $locals)
+          );
 }
