@@ -26,6 +26,11 @@ Multi Line {
   Expect: two;
 }
 
+Cons {
+  Assert: function_eval(cons one (q two));
+  Expect: one two;
+}
+
 Math {
   Assert: function_eval((add 0.25 (multiply 4 (multiply 5 2)) 1.75));
   Expect: 42;
