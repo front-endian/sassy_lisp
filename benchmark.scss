@@ -1,12 +1,20 @@
+// Copyright (C) 2016 Colin Fulton
+// All rights reserved.
+//
+// This software may be modified and distributed under the
+// terms of the three-clause BSD license. See LICENSE.txt
+
+// Board Functions
+
 ///////////////
 // Pure SASS //
 ///////////////
 
 @function sass_fib($value) {
-  @if $value == 0 or $value == 1 {
+  @if $value < 2 {
     @return $value;
   } @else {
-    @return sass_fib($value - 1) + sass_fib($value - 2)
+    @return sass_fib($value - 1) + sass_fib($value - 2);
   }
 }
 
